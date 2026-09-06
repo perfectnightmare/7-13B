@@ -27,6 +27,7 @@ const runTeleport = require('./teleport-activation.js');
 const runGifts = require('./gifts-activation.js');
 const runDuelFP = require('./duel-fp.js');
 const runClaimRewards = require('./claim-BPrewards.js');
+const runGuildAttack = require('./guild-attack.js');
 
 
 
@@ -52,6 +53,7 @@ const scripts = [
   { name: 'Daily Tasks', fn: runDailyTasks, alwaysRun: true },
 
   { name: 'Boyfriend Kiss', fn: runBoyfriendKiss, alwaysRun: true },
+  { name: 'Guild Attack', fn: runGuildAttack, alwaysRun: true },
 
   { name: 'Guild Show', fn: runGuildShow, alwaysRun: true },
 
