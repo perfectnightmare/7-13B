@@ -1,4 +1,4 @@
-name: Run mspc.js
+name: Run mspc-once.js
 
 on:
   workflow_dispatch:
@@ -54,7 +54,7 @@ jobs:
           LP_MEMORY_URL: ${{ secrets.LP_MEMORY_URL }}
           LP_FASHION_MAGAZINE_URL: ${{ secrets.LP_FASHION_MAGAZINE_URL }}
           LP_SOLITAIRE_URL: ${{ secrets.LP_SOLITAIRE_URL }}
-          TICKET_RESERVE: 95
+          TICKET_RESERVE: 0
 
       - name: 🖼️ Upload error screenshots if failed
         if: failure()

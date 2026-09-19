@@ -8,8 +8,14 @@ async function runFurniture(page) {
 
   const ITEM_PRICE = 260;
   const MAX_CART_ITEMS = 20;
+  const MAX_LOOPS = 10;
 
-  while (true) {
+  let loopCount = 0;
+
+  while (loopCount < MAX_LOOPS) {
+    loopCount++;
+    console.log(`🔄 Furniture loop ${loopCount}/${MAX_LOOPS}...`);
+
     console.log('🛒 Navigating to cart page...');
     await page.goto('https://v3.g.ladypopular.com/mall/cart.php?action=loadMallContent');
     await page.waitForLoadState('networkidle');
@@ -48,24 +54,41 @@ async function runFurniture(page) {
 
     let addedCount = 0;
     let stop = false;
-    for (let batchStart = 0; batchStart < MAX_CART_ITEMS && !stop; batchStart += BATCH_SIZE) {
-      const batchLen = Math.min(BATCH_SIZE, MAX_CART_ITEMS - batchStart);
+
+    for (
+      let batchStart = 0;
+      batchStart < MAX_CART_ITEMS && !stop;
+      batchStart += BATCH_SIZE
+    ) {
+      const batchLen = Math.min(
+        BATCH_SIZE,
+        MAX_CART_ITEMS - batchStart
+      );
+
       const responses = await Promise.all(
         Array.from({ length: batchLen }, () => addOneItem())
       );
 
       for (let j = 0; j < responses.length; j++) {
         let json;
+
         try {
           json = await responses[j].json();
         } catch (err) {
-          console.warn(`⚠️ Failed to parse response for item ${batchStart + j + 1}:`, err.message);
+          console.warn(
+            `⚠️ Failed to parse response for item ${batchStart + j + 1}:`,
+            err.message
+          );
           stop = true;
           break;
         }
 
         if (json?.status !== 1) {
-          console.warn(`⚠️ Failed to add item ${batchStart + j + 1}: ${json?.message || 'unknown error'}`);
+          console.warn(
+            `⚠️ Failed to add item ${batchStart + j + 1}: ${
+              json?.message || 'unknown error'
+            }`
+          );
           stop = true;
           break;
         }
@@ -78,18 +101,25 @@ async function runFurniture(page) {
       console.warn('⚠️ No items were added this cycle. Stopping.');
       break;
     }
+
     console.log(`✅ Added ${addedCount} item(s) to cart.`);
 
     // 🧾 Buy items directly via the internal checkout API — no UI click, no waiting for a button.
     console.log('🪙 Sending checkout request...');
+
     let buySuccess = false;
+
     try {
-      const buyResponse = await page.request.post('https://v3.g.ladypopular.com/ajax/mall/cart.php', {
-        form: {
-          action: 'checkoutCart',
-          collectionsPage: 'false'
+      const buyResponse = await page.request.post(
+        'https://v3.g.ladypopular.com/ajax/mall/cart.php',
+        {
+          form: {
+            action: 'checkoutCart',
+            collectionsPage: 'false'
+          }
         }
-      });
+      );
+
       const buyJson = await buyResponse.json();
       buySuccess = buyJson?.status === 1;
     } catch (err) {
@@ -97,11 +127,19 @@ async function runFurniture(page) {
       buySuccess = false;
     }
 
-    console.log(buySuccess ? '✅ Buying success.' : '❌ Buying failed.');
+    console.log(
+      buySuccess
+        ? '✅ Buying success.'
+        : '❌ Buying failed.'
+    );
 
     if (!buySuccess) {
       break;
     }
+  }
+
+  if (loopCount >= MAX_LOOPS) {
+    console.log(`🛑 Maximum of ${MAX_LOOPS} furniture loops reached.`);
   }
 
   console.log('🏁 Furniture automation complete.');
