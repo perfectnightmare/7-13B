@@ -45,7 +45,7 @@ jobs:
         run: npx playwright install chromium --with-deps
 
       - name: 🚀 Run mspc.js script
-        run: node mspc.js
+        run: node mspc-once.js
         env:
           LP_ACCOUNTS: ${{ secrets.LP_ACCOUNTS }}
           LP_TELEPORT_URL: ${{ secrets.LP_TELEPORT_URL }}
