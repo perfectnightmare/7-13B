@@ -28,6 +28,7 @@ const runGifts = require('./gifts-activation.js');
 const runDuelFP = require('./duel-fp.js');
 const runClaimRewards = require('./claim-BPrewards.js');
 const runGuildAttack = require('./guild-attack.js');
+const runRate = require('./rate.js');
 
 
 
@@ -67,6 +68,7 @@ const scripts = [
   { name: 'Furniture Script1', fn: runFurnitureScript, alwaysRun: true },
   //{ name: 'Furniture Script2', fn: runFurnitureScript, alwaysRun: true },
   { name: 'Raise stats', fn: runDuelFP, alwaysRun: true },
+  { name: 'Rate Guild', fn: runRate, alwaysRun: true },
 
 ];
 
