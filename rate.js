@@ -16,7 +16,7 @@
 // ================================================================
 
 // The guild (club) we want to go to. Change this number to rate another guild.
-const GUILD_ID = 1071;
+const GUILD_ID = 1221;
 
 // The rating we give every lady (constant).
 const RATING = 3;
