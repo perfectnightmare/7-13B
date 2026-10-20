@@ -7,7 +7,7 @@ jobs:
   run-mspc:
     runs-on: ubuntu-22.04
     # runs-on: ubuntu-latest (optional)
-    timeout-minutes: 50
+    timeout-minutes: 60
 
     steps:
       - name: ⬇️ Checkout repository
