@@ -82,7 +82,7 @@ async function login(page, account) {
 
   let loginSuccess = false;
 
-  for (let attempt = 1; attempt <= 5; attempt++) {
+  for (let attempt = 1; attempt <= 1; attempt++) {
 
     try {
 
