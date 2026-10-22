@@ -135,7 +135,7 @@ module.exports = async function runTeleportEvent(page) {
       const collected = parseInt(progress.split('/')[0].trim());
       const priority = collected < 12
         ? [[2, 2], [2, 9], [9, 2], [9, 9]]
-        : [[3, 3], [3, 8], [8, 3], [8, 8]];
+        : [[2, 2], [2, 9], [9, 2], [9, 9]];
       const candidates = priority.filter(p => highProb.has(key(p)));
       if (candidates.length >= 2) {
         const tk = randomPick(candidates);
