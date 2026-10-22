@@ -5,9 +5,10 @@
 // What this script does:
 //   Step 1: Open the guild page with an internal request and grab the HTML.
 //   Step 2: Pull every member's name + lady id out of that HTML,
-//           then remove the ladies in the exclusion set.
-//   Step 3: Send one rating (3) request for each remaining lady.
-//           Safety check: if ALL of the first 5 ratings fail, stop.
+//           then remove the ladies in the exclusion set,
+//           then add the ladies from the inclusion list.
+//   Step 3: Send rating requests for each lady (try 5 first, then 3).
+//           Safety check: if the first 5 ladies ALL fail, stop.
 // ================================================================
 
 
@@ -18,8 +19,12 @@
 // The guild (club) we want to go to. Change this number to rate another guild.
 const GUILD_ID = 1221;
 
-// The rating we give every lady (constant).
-const RATING = 3;
+// ----- CHANGE 1 (replaces the old "const RATING = 3;" line) -----
+// The ratings we try for each lady, in order.
+// We try 5 first (works only for ladies with a booster).
+// If that is not a success, we try 3.
+const RATINGS_TO_TRY = [5, 3];
+// ----------------------------------------------------------------
 
 // Exclusion set: ladies who must NOT be rated.
 // A lady is removed if EITHER her id OR her name matches anything below.
@@ -30,16 +35,73 @@ const EXCLUDED_LADY_IDS = [
 
 const EXCLUDED_LADY_NAMES = [
   'Bella Swan',
-  'R H A E N Y R A'
+  'R H A E N Y R A',
+  'хілларі',
+  'Alex',
+  'Katherine Auguste',
+  'Liv Moore',
+  'NirvanaOcean',
+  'mimi',
+  'Lamia',
+  'alex-Rebecca',
+  'Ellione',
+  'Ismben',
+  'Gypsii',
+  'Ghilaine',
+  'Албена К.',
+  'Jane',
+  'Anea',
+  'Axel',
+  'SissyL',
+  'Simk',
+  'Anna Bolena',
+  'Indra',
+  'Gabriela Nieves',
+  'Alexandra_Sunshine',
+  'Edu',
+  'Noran',
+  'Gloria',
+  'Pamuk',
+  'TigerLily',
+  'MILANA20',
+  'Hellga',
+  'LadyDeeDee',
+  'Rucsandra',
+  'Kim Miu',
+  'asli',
+  'Metal Princess',
+  'Yelyah',
+  'xox19mama91xox',
+  'Jurria',
+  'Lina lyn',
+  'Didiqn',
+  '𝓐𝓷𝓷𝓪',
+  'Lana turner'
 ];
+
+// ----- CHANGE 2 (new list) -----
+// Inclusion list: extra ladies who are NOT in the guild but should also be rated.
+// Just type their lady ids here, separated by commas. Example:
+//   const INCLUDED_LADY_IDS = [
+//     1234567,
+//     7654321
+//   ];
+const INCLUDED_LADY_IDS = [
+  1905079, //rosa
+  8242717, //vivienne
+  7115204 //sherry
+  
+];
+// -------------------------------
 
 // Pause between two rating requests (milliseconds).
 // Keeps us from hammering the server.
 const DELAY_BETWEEN_RATINGS_MS = 500;
 
-// Safety check: if ALL of the first N rating requests fail (anything other
-// than success), we assume something is wrong (bad token, logged out,
-// wrong guild...) and stop without sending the remaining ratings.
+// Safety check: if ALL of the first N ladies fail (both rating 5 and
+// rating 3 failed for each of them), we assume something is wrong
+// (bad token, logged out, wrong guild...) and stop without sending
+// the remaining ratings.
 const EARLY_ABORT_CHECK_COUNT = 5;
 
 // The game's base address. All internal requests go here.
@@ -180,9 +242,29 @@ module.exports = async function runRate(page) {
     `🚫 Excluded ${removedCount} lady/ladies. ${ladiesToRate.length} left to rate.`
   );
 
+  // ----- CHANGE 2 (new block): add the ladies from the inclusion list -----
+  // These ladies are outside the club, so we only know their ids.
+  // If an id is already in the list (e.g. she is also in the club),
+  // we skip it so she doesn't get rated twice.
+  const alreadyInList = new Set(ladiesToRate.map(lady => lady.id));
+  let addedCount = 0;
+
+  for (const id of INCLUDED_LADY_IDS.map(Number)) {
+    if (!alreadyInList.has(id)) {
+      ladiesToRate.push({ id: id, name: `Outside lady ${id}` });
+      alreadyInList.add(id);
+      addedCount++;
+    }
+  }
+
+  console.log(
+    `➕ Added ${addedCount} lady/ladies from the inclusion list. ${ladiesToRate.length} total to rate.`
+  );
+  // -------------------------------------------------------------------------
+
 
   // ==============================================================
-  // ⭐ STEP 3: SEND A RATING REQUEST FOR EACH REMAINING LADY
+  // ⭐ STEP 3: SEND RATING REQUESTS FOR EACH REMAINING LADY
   // ==============================================================
 
   // Find the Authorization token once and reuse it for every lady.
@@ -211,11 +293,11 @@ module.exports = async function runRate(page) {
   let successCount = 0;
   let failCount = 0;
 
-  // We use an index-based loop so we know exactly when the 5th lady is done.
-  for (let i = 0; i < ladiesToRate.length; i++) {
-
-    const lady = ladiesToRate[i];
-
+  // ----- CHANGE 1 (new helper): sends ONE vote request -----
+  // This is your old fetch code, moved into a function so we can call it
+  // twice (once for rating 5, once for rating 3).
+  // It returns { success: true/false, message: '...' } and never crashes.
+  async function sendVote(ladyId, rating) {
     try {
 
       // Send the vote from inside the page (so cookies go along).
@@ -247,8 +329,8 @@ module.exports = async function runRate(page) {
         },
         {
           query,
-          ladyId: lady.id,
-          rating: RATING,
+          ladyId: ladyId,
+          rating: rating,
           token: authToken
         }
       );
@@ -259,42 +341,83 @@ module.exports = async function runRate(page) {
 
       if (vote && vote.status === 1) {
         // ✅ Success
-        successCount++;
-        console.log(
-          `⭐ ${lady.name} (id ${lady.id}) → rated ${RATING} ✅ ${vote.message}`
-        );
-      } else {
-        // ❌ Failure or anything unexpected
-        failCount++;
-        const reason =
+        return { success: true, message: vote.message };
+      }
+
+      // ❌ Failure or anything unexpected
+      return {
+        success: false,
+        message:
           vote?.message ||
           result?.errors?.[0]?.message ||
-          'unknown response';
-        console.log(
-          `⭐ ${lady.name} (id ${lady.id}) → rated ${RATING} ❌ ${reason}`
-        );
-      }
+          'unknown response'
+      };
 
     } catch (err) {
 
-      // A network/script error for one lady counts as a failure,
+      // A network/script error counts as a failure,
       // but must not crash the whole script.
-      failCount++;
-      console.log(
-        `⭐ ${lady.name} (id ${lady.id}) → rated ${RATING} ❌ request failed: ${err.message}`
-      );
+      return { success: false, message: `request failed: ${err.message}` };
     }
+  }
+  // ---------------------------------------------------------
+
+  // We use an index-based loop so we know exactly when the 5th lady is done.
+  for (let i = 0; i < ladiesToRate.length; i++) {
+
+    const lady = ladiesToRate[i];
+
+    // ----- CHANGE 1 (replaces the old try/catch block) -----
+    // Try each rating in order (5 first, then 3).
+    // As soon as one succeeds, this lady is done and we stop trying.
+    let rated = false;
+
+    for (let r = 0; r < RATINGS_TO_TRY.length; r++) {
+
+      const rating = RATINGS_TO_TRY[r];
+      const isLastTry = r === RATINGS_TO_TRY.length - 1;
+
+      const outcome = await sendVote(lady.id, rating);
+
+      if (outcome.success) {
+        // ✅ Success: lady is rated, no need to try the other rating
+        rated = true;
+        console.log(
+          `⭐ ${lady.name} (id ${lady.id}) → rated ${rating} ✅ ${outcome.message}`
+        );
+        break;
+      }
+
+      // ❌ This rating did not work
+      console.log(
+        `⭐ ${lady.name} (id ${lady.id}) → rating ${rating} ❌ ${outcome.message}` +
+        (isLastTry ? '' : ' (trying next rating...)')
+      );
+
+      // Short pause before trying the next rating
+      if (!isLastTry) {
+        await page.waitForTimeout(DELAY_BETWEEN_RATINGS_MS);
+      }
+    }
+
+    if (rated) {
+      successCount++;
+    } else {
+      // Both rating 5 and rating 3 failed = this lady counts as a failure
+      failCount++;
+    }
+    // --------------------------------------------------------
 
     // ============================================================
     // 🛑 EARLY ABORT CHECK
     // ============================================================
     // Once we've tried exactly the first 5 ladies, look at the results.
-    // If successCount is still 0, then ALL 5 were failures (or any other
-    // non-success response), so we stop here and skip the rest.
+    // If successCount is still 0, then ALL 5 ladies failed (both rating 5
+    // and rating 3), so we stop here and skip the rest.
     // If at least one succeeded, we carry on normally.
     if (i + 1 === EARLY_ABORT_CHECK_COUNT && successCount === 0) {
       console.log(
-        `🛑 First ${EARLY_ABORT_CHECK_COUNT} ratings all failed. Skipping the remaining ${ladiesToRate.length - (i + 1)} ladies and ending.`
+        `🛑 First ${EARLY_ABORT_CHECK_COUNT} ladies all failed. Skipping the remaining ${ladiesToRate.length - (i + 1)} ladies and ending.`
       );
       return; // ends rate.js immediately
     }
